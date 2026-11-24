@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store.js';
+import { isDemoMode } from '../api.js';
+import { demoCredentials } from '../demo.js';
 import Icon from './Icon.jsx';
 
 export default function AuthScreen() {
@@ -92,6 +94,20 @@ export default function AuthScreen() {
           <button className="primary-btn auth-submit" type="submit" disabled={loading}>
             {loading ? 'Загрузка…' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
           </button>
+          {isDemoMode && (
+            <div className="demo-hint">
+              <span>Версия для GitHub Pages — данные сохраняются в вашем браузере.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setForm((current) => ({ ...current, email: demoCredentials.email, password: demoCredentials.password }));
+                }}
+              >
+                Войти как демо-пользователь
+              </button>
+            </div>
+          )}
           <p className="auth-hint">
             {mode === 'login' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
             <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); clearError(); setLocalError(''); }}>

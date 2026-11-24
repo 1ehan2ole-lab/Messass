@@ -1,10 +1,17 @@
 import { io } from 'socket.io-client';
-import { getToken } from './api.js';
+import { getToken, isDemoMode } from './api.js';
+import { connectDemoSocket, emitDemoTyping, setDemoPresence } from './demo.js';
 
 let socket = null;
 
 export function connectSocket(handlers) {
   disconnectSocket();
+
+  if (isDemoMode) {
+    connectDemoSocket(handlers);
+    return null;
+  }
+
   const token = getToken();
   if (!token) return null;
 
@@ -38,6 +45,10 @@ export function disconnectSocket() {
 }
 
 export function emitTyping(conversation, isTyping) {
+  if (isDemoMode) {
+    emitDemoTyping(conversation, isTyping);
+    return;
+  }
   if (!socket?.connected) return;
   socket.emit('typing', {
     channelId: conversation?.channelId || null,
@@ -47,5 +58,9 @@ export function emitTyping(conversation, isTyping) {
 }
 
 export function setPresence(status) {
+  if (isDemoMode) {
+    setDemoPresence(status);
+    return;
+  }
   socket?.emit('presence:set', { status });
 }

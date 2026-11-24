@@ -1,4 +1,10 @@
+import { demoApi } from './demo.js';
+
 const TOKEN_KEY = 'messass_token';
+
+export const isDemoMode =
+  import.meta.env.VITE_DEMO_MODE === 'true' ||
+  (typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io'));
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
@@ -41,7 +47,7 @@ async function request(path, { method = 'GET', body, headers = {}, ...rest } = {
   return data;
 }
 
-export const api = {
+const serverApi = {
   register: (data) => request('/auth/register', { method: 'POST', body: data }),
   login: (data) => request('/auth/login', { method: 'POST', body: data }),
   me: () => request('/auth/me'),
@@ -96,3 +102,5 @@ export const api = {
   searchUsers: (q) => request(`/users?q=${encodeURIComponent(q)}`),
   getPresence: () => request('/users/presence'),
 };
+
+export const api = isDemoMode ? demoApi : serverApi;
