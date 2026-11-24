@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store.js';
-import { isDemoMode } from '../api.js';
+import { isDemoMode, setApiBase } from '../api.js';
 import { demoCredentials } from '../demo.js';
 import Icon from './Icon.jsx';
 
@@ -8,6 +8,7 @@ export default function AuthScreen() {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ username: '', email: '', password: '', confirm: '' });
   const [localError, setLocalError] = useState('');
+  const [serverUrl, setServerUrl] = useState('');
   const loading = useStore((s) => s.loading);
   const error = useStore((s) => s.error);
   const authenticate = useStore((s) => s.authenticate);
@@ -106,6 +107,24 @@ export default function AuthScreen() {
               >
                 Войти как демо-пользователь
               </button>
+              <div className="demo-server-row">
+                <input
+                  value={serverUrl}
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  placeholder="https://ваш-сервер.trycloudflare.com"
+                />
+                <button
+                  type="button"
+                  disabled={!serverUrl.trim()}
+                  onClick={() => {
+                    setApiBase(serverUrl);
+                    window.location.reload();
+                  }}
+                >
+                  Подключить
+                </button>
+              </div>
+              <small>Можно подключить свой сервер (например, запущенный на телефоне).</small>
             </div>
           )}
           <p className="auth-hint">

@@ -1,11 +1,63 @@
-import Database from 'better-sqlite3';
 import { config } from './config.js';
 
-export const db = new Database(config.databasePath);
+// Two SQLite drivers are supported:
+//   better-sqlite3  — fastest, used on desktop/servers (installed by default)
+//   node:sqlite     — built into Node.js 22+, no native build, works on Android/Termux
+async function openDatabase() {
+  if (process.env.DB_DRIVER !== 'node:sqlite') {
+    try {
+      const { default: Database } = await import('better-sqlite3');
+      return { raw: new Database(config.databasePath), driver: 'better-sqlite3' };
+    } catch (error) {
+      if (process.env.DB_DRIVER === 'better-sqlite3') throw error;
+      console.warn('better-sqlite3 unavailable, falling back to node:sqlite');
+    }
+  }
+  const { DatabaseSync } = await import('node:sqlite');
+  return { raw: new DatabaseSync(config.databasePath), driver: 'node:sqlite' };
+}
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
+const { raw, driver } = await openDatabase();
+export const dbDriver = driver;
+
+// Normalize the small API differences between the two drivers.
+export const db = {
+  exec: raw.exec.bind(raw),
+  close: raw.close.bind(raw),
+  transaction(fn) {
+    return (...args) => {
+      raw.exec('BEGIN');
+      try {
+        const result = fn(...args);
+        raw.exec('COMMIT');
+        return result;
+      } catch (error) {
+        raw.exec('ROLLBACK');
+        throw error;
+      }
+    };
+  },
+  prepare(sql) {
+    const statement = raw.prepare(sql);
+    return {
+      get: (...params) => statement.get(...params),
+      all: (...params) => statement.all(...params),
+      run(...params) {
+        const result = statement.run(...params);
+        return {
+          changes: Number(result.changes || 0),
+          lastInsertRowid: result.lastInsertRowid === undefined
+            ? undefined
+            : Number(result.lastInsertRowid),
+        };
+      },
+    };
+  },
+};
+
+db.exec('PRAGMA journal_mode = WAL');
+db.exec('PRAGMA foreign_keys = ON');
+db.exec('PRAGMA busy_timeout = 5000');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (

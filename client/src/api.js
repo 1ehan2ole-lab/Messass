@@ -1,14 +1,36 @@
 import { demoApi } from './demo.js';
 
 const TOKEN_KEY = 'messass_token';
+const API_BASE_KEY = 'messass_api_base';
 
-export const isDemoMode =
-  import.meta.env.VITE_DEMO_MODE === 'true' ||
-  (typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io'));
-
-export const getToken = () => localStorage.getItem(TOKEN_KEY);
+export const getApiBase = () => (localStorage.getItem(API_BASE_KEY) || '').replace(/\/$/, '');
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+export const setApiBase = (url) => {
+  const clean = String(url || '').trim().replace(/\/$/, '');
+  if (clean) localStorage.setItem(API_BASE_KEY, clean);
+  else localStorage.removeItem(API_BASE_KEY);
+  clearToken();
+};
+
+// ?server=https://my-tunnel.trycloudflare.com — quick way to connect this static site to a real backend.
+if (typeof window !== 'undefined') {
+  const fromQuery = new URLSearchParams(window.location.search).get('server');
+  if (fromQuery) {
+    setApiBase(fromQuery);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('server');
+    window.history.replaceState({}, document.title, url.pathname);
+  }
+}
+
+export const isDemoMode =
+  !getApiBase() && (
+    import.meta.env.VITE_DEMO_MODE === 'true' ||
+    (typeof window !== 'undefined' && window.location.hostname.endsWith('.github.io'))
+  );
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY);
 
 export class ApiError extends Error {
   constructor(message, status) {
@@ -20,7 +42,7 @@ export class ApiError extends Error {
 async function request(path, { method = 'GET', body, headers = {}, ...rest } = {}) {
   const token = getToken();
   const isForm = body instanceof FormData;
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${getApiBase()}/api${path}`, {
     method,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

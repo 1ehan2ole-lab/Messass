@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { getToken, isDemoMode } from './api.js';
+import { getToken, getApiBase, isDemoMode } from './api.js';
 import { connectDemoSocket, emitDemoTyping, setDemoPresence } from './demo.js';
 
 let socket = null;
@@ -15,7 +15,7 @@ export function connectSocket(handlers) {
   const token = getToken();
   if (!token) return null;
 
-  socket = io({ auth: { token }, transports: ['websocket', 'polling'] });
+  socket = io(getApiBase() || undefined, { auth: { token }, transports: ['websocket', 'polling'] });
 
   const register = (event, handler) => {
     if (typeof handler === 'function') socket.on(event, handler);

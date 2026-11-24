@@ -82,6 +82,54 @@ npm test
 
 Настоящий общий сервер с БД и WebSocket запускается отдельно. Проект — один Node.js-процесс, который отдаёт и API, и frontend, поэтому подходит для большинства бесплатных хостингов (Render/Railway/Fly.io).
 
+### Сервер на старом Android-телефоне (Termux)
+
+Да, телефон можно использовать как мини-сервер. Требуется Android 7+ и Termux (ставьте с F-Droid, версия из Google Play устарела).
+
+```bash
+pkg update -y && pkg upgrade -y
+pkg install -y nodejs-lts git
+termux-setup-storage
+termux-wake-lock                 # не давать телефону усыпать процесс
+
+git clone https://github.com/1ehan2ole-lab/Messass.git
+cd Messass
+npm install --prefix client
+npm run build --prefix client
+npm install --prefix server --omit=optional   # пропускаем нативный better-sqlite3
+```
+
+Запуск (используется встроенный в Node.js `node:sqlite`, сборка не нужна):
+
+```bash
+DB_DRIVER=node:sqlite \
+DATA_DIR=$HOME/messass-data \
+JWT_SECRET=$(openssl rand -hex 32) \
+npm start
+```
+
+Если у вас Node 22, добавьте `NODE_OPTIONS=--experimental-sqlite`. На Node 24 флаг не нужен.
+
+Чтобы открыть сервер извне, поднимите туннель (без аккаунта и домена):
+
+```bash
+# Cloudflare Quick Tunnel: скачайте cloudflared-linux-arm64 с releases.cloudflare.com
+chmod +x cloudflared-linux-arm64
+./cloudflared-linux-arm64 tunnel --url http://localhost:3001
+```
+
+Он выдаст случайный `https://....trycloudflare.com`. Откройте сайт на Pages с параметром:
+
+```
+https://1ehan2ole-lab.github.io/Messass/?server=https://ВАШ-ТУННЕЛЬ.trycloudflare.com
+```
+
+Сайт запомнит адрес сервера и будет работать в полноценном многопользовательском режиме. То же можно ввести на экране входа в поле «Подключить сервер».
+
+Советы: держите телефон на зарядке (нагрев и расход батареи), отключите оптимизацию батареи для Termux, не обновляйте туннель слишком часто — при перезапуске адрес меняется.
+
+Переменная `DB_DRIVER=node:sqlite` заставляет сервер использовать встроенный SQLite вместо `better-sqlite3`; на обычном ПК/хостинге лучше оставить `better-sqlite3` (быстрее).
+
 ### Render.com (рекомендуется)
 
 1. Создайте **Web Service**, подключите репозиторий GitHub.
