@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm ci --prefix server
+          npm ci --prefix client
+
+      - name: Build client
+        run: npm run build
+
+      - name: Start API server
+        run: npm start &
+        env:
+          JWT_SECRET: ci-test-secret
+          PORT: 3001
+
+      - name: Wait for API
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS http://localhost:3001/api/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Run API tests
+        run: npm test
